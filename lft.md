@@ -1,0 +1,3 @@
+该项目主要基于仿真R5的python sdk实现vr遥操采集lerobot框架的数据，实现推理；
+主要代码实现在py\ARX_R5_python中，环境配置参考方舟的sdk安装文档；
+运行流程在py\ARX_R5_python\lft.md中
