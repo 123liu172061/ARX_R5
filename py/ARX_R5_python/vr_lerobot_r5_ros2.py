@@ -78,8 +78,26 @@ class ShoubingArmController(Node):
         new_xyzrpy[4] = new_rpy[2] * 0.7  #由于坐标系未对齐，所以rpy顺序 机械臂和手柄是有错位
         new_xyzrpy[5] = new_rpy[1] * 0.8
     
-        pos_target =  self.single_arm.get_joint_positions()
+        pos_now =  self.single_arm.get_joint_positions()
         print("pos_now:", pos_now)
+        # 1.发布now_states
+        joint_now_curr = self.single_arm.get_joint_currents()  #lerobot中不需要此电流数据，无用
+        joint_now_state_msg = JointState()
+        joint_now_state_msg.header.stamp = self.get_clock().now().to_msg()
+        joint_now_state_msg.name = self.joint_names
+        joint_now_state_msg.position = pos_now      # 仅该数据有用  相当于从臂关节位置数据
+        joint_now_state_msg.effort = joint_now_curr
+        self.joint_now_state_pub.publish(joint_now_state_msg)
+
+        self.get_logger().info(f"控制机械臂位置增量: {delta_pos}, 新位姿: {new_xyzrpy[:3]}")
+        # pos_solve = inverse_kinematics(new_xyzrpy)  # 6个关节位置，还差手抓关节 没法用，会经常逆解不了，不知道为何，按理末端控制也用了内部逆解
+        if self.allow_control:
+            self.single_arm.set_ee_pose_xyzrpy(new_xyzrpy) # 控制接口
+    
+
+        # 2.发布now_states target_states
+        pos_target =  self.single_arm.get_joint_positions()
+        print("pos_target:", pos_target)
         # 1.发布target_states
         joint_target_curr = self.single_arm.get_joint_currents()  #lerobot中不需要此数据，无用
         joint_target_state_msg = JointState()
@@ -88,23 +106,6 @@ class ShoubingArmController(Node):
         joint_target_state_msg.position = pos_target
         joint_target_state_msg.effort = joint_target_curr
         self.joint_target_state_pub.publish(joint_target_state_msg)
-
-        self.get_logger().info(f"控制机械臂位置增量: {delta_pos}, 新位姿: {new_xyzrpy[:3]}")
-        # pos_solve = inverse_kinematics(new_xyzrpy)  # 6个关节位置，还差手抓关节 没法用，会经常逆解不了，不知道为何，按理末端控制也用了内部逆解
-        if self.allow_control:
-            self.single_arm.set_ee_pose_xyzrpy(new_xyzrpy) # 控制接口
-        
-        pos_now =  self.single_arm.get_joint_positions()
-        print("pos_now:", pos_now)
-
-        # 2.发布now_states
-        joint_now_curr = self.single_arm.get_joint_currents()  #lerobot中不需要此电流数据，无用
-        joint_now_state_msg = JointState()
-        joint_now_state_msg.header.stamp = self.get_clock().now().to_msg()
-        joint_now_state_msg.name = self.joint_names
-        joint_now_state_msg.position = pos_now      # 仅该数据有用  相当于从臂关节位置数据
-        joint_now_state_msg.effort = joint_now_curr
-        self.joint_now_state_pub.publish(joint_now_state_msg)
 
     def state_callback(self, msg):
         if len(msg.data) >= 2:
